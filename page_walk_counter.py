@@ -10,15 +10,26 @@ import statistics
 
 if len(sys.argv) < 1:
     sys.exit(-1)
-if len(sys.argv) != 2:
-    print("Usage:", sys.argv[0], "[perf.log]")
+if len(sys.argv) != 2 and len(sys.argv) != 3:
+    print("Usage:", sys.argv[0], "[perf.log]", "[partition with comma]")
     sys.exit(-1)
 
-input = sys.argv[1]
 file = []
-with open(input) as infile:
-    for line in infile:
-        file.append(line)
+try:
+    with open(sys.argv[1]) as infile:
+        for line in infile:
+            file.append(line)
+except:
+    print("File open error")
+    sys.exit(-1)
+
+partition = []
+if len(sys.argv) == 3:
+    try:
+        partition = [int(i) for i in sys.argv[2].split(",")]
+    except:
+        print("Invalid partition argument")
+        sys.exit(-1)
 
 valid_cols = ["dtlb_load_misses.walk_completed", "dtlb_load_misses.walk_pending", "dtlb_load_misses.walk_active",
               "dtlb_store_misses.walk_completed", "dtlb_store_misses.walk_pending", "dtlb_store_misses.walk_active",
@@ -42,7 +53,7 @@ def read_line(line):
     col = 0
     components = line.split(" ")
     if components[0] == "Took:":
-        return [float(components[1].split('\n')[0])]
+        return [float(components[1].split("\n")[0])]
     for component in components:
         if component == "" or component == "msec":
             continue
@@ -114,6 +125,8 @@ def read_run(line_num):
                 next_linenum = i
                 break
         elif len(cols) == 1:
+            if runtime != 0 and cols[0] != runtime:
+                print("Warning: runtime differs in one run")
             runtime = cols[0]
     pw_latency = get_pw_latency(event_counts)
     print("Runtime:", runtime)
@@ -124,19 +137,33 @@ def read_run(line_num):
     return [next_linenum, runtime, pw_latency] + event_counts
 
 line_num = 0
-run_count = 1
-this_runtime = 0.0
-this_latency = 0.0
-runtime = list()
-pw_latency = list()
+run_count = 0
+runtime = []
+pw_latency = []
 while True:
-    print("Run", run_count)
-    line_num, this_runtime, this_latency = read_run(line_num)[0:3]
+    print("Run", run_count + 1)
+    line_num, this_runtime, this_latency = read_run(line_num)[0 : 3]
     runtime += [this_runtime]
     pw_latency += [this_latency]
+    run_count += 1
     print("")
     if not line_num:
         break
-    run_count += 1
-print("Average runtime:", statistics.mean(runtime))
-print("Average page walk latency:", statistics.mean(pw_latency))
+
+partition_sum = sum(partition)
+run_start = 0
+run_end = 0
+if not len(partition) or partition_sum > run_count:
+    if len(partition):
+        print("Warning: paritions not applied because there are not enough runs")
+    print("Average runtime:", statistics.mean(runtime))
+    print("Average page walk latency:", statistics.mean(pw_latency))
+else:
+    for i in range(0, len(partition)):
+        print("Partition ", i + 1, ", ", partition[i], " runs", sep="")
+        run_end = run_start + partition[i]
+        print("Average runtime:", statistics.mean(runtime[run_start : run_end]))
+        print("Average page walk latency:", statistics.mean(pw_latency[run_start : run_end]))
+        run_start = run_end
+        if i != len(partition) - 1:
+            print("")
