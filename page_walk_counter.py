@@ -183,11 +183,11 @@ while True:
 for i in range(0, run_count):
     print("")
     print("Run #", i + 1, ", 0 -> ", stats[i][0], ", ", stats[i][1] + 1, " -> ", stats[i][2] + 1, sep="")
-    print("Runtime:", runtime[i])
+    print("Runtime:", '{:.3f}'.format(runtime[i]))
     print("Relative runtime:", get_relative(runtime[i], runtime))
-    print("Page walk latency:", pw_latency[i])
+    print("Page walk latency:", '{:.3f}'.format(pw_latency[i]))
     print("Relative latency:", get_relative(pw_latency[i], pw_latency))
-    print("Reference CPU speed:", speed[i], "GHz")
+    print("Reference CPU speed:", '{:.3f}'.format(speed[i]), "GHz")
     print("Relative CPU speed:", get_relative(speed[i], speed))
     for j in range(3, len(stats[i])):
         print(valid_cols[j - 3], stats[i][j], sep=": ")
@@ -203,9 +203,9 @@ if not len(partition) or partition_sum > run_count:
     print("")
     if len(partition):
         print("Warning: paritions are not applied because there are not enough runs")
-    print("Average runtime:", statistics.mean(runtime))
-    print("Average page walk latency:", statistics.mean(pw_latency))
-    print("Average CPU speed:", statistics.mean(speed))
+    print("Average runtime:", '{:.3f}'.format(statistics.mean(runtime)))
+    print("Average page walk latency:", '{:.3f}'.format(statistics.mean(pw_latency)))
+    print("Average CPU speed:", '{:.3f}'.format(statistics.mean(speed)))
 else:
     for i in range(0, len(partition)):
         run_end = run_start + partition[i]
@@ -217,11 +217,11 @@ else:
 for i in range(0, len(partition)):
     print("")
     print("Partition #", i + 1, ", ", partition[i], " runs", sep="")
-    print("Average runtime:", avg_runtime[i])
+    print("Average runtime:", '{:.3f}'.format(avg_runtime[i]))
     print("Relative average runtime:", get_relative(avg_runtime[i], avg_runtime))
-    print("Average page walk latency:", avg_latency[i])
+    print("Average page walk latency:", '{:.3f}'.format(avg_latency[i]))
     print("Relative page walk latency:", get_relative(avg_latency[i], avg_latency))
-    print("Average CPU speed:", avg_speed[i], "GHz")
+    print("Average CPU speed:", '{:.3f}'.format(avg_speed[i]), "GHz")
     print("Relative CPU speed:", get_relative(avg_speed[i], avg_speed))
 
 print("")
