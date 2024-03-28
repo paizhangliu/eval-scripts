@@ -52,7 +52,7 @@ Args:
 A line in the perf file.
 
 Returns:
-If the line contains valid data, return the 3 columns of interest (len = 3)
+If the line contains valid data, return the 3 columns of interest plus CPU speed if available (len = 4)
 If the line contains benchmark result, return the result (len = 1)
 If the line is invalid, return an empty list (len = 0)
 '''
@@ -60,11 +60,14 @@ def read_line(line):
     time = 0.0
     counts = 0
     col = 0
+    speed = 0.0
     components = line.split(" ")
     if components[0] == "Took:":
         return [float(components[1].split("\n")[0])]
+    if "GHz" in components:
+        speed = float(components[components.index("GHz") - 1])
     for component in components:
-        if component == "" or component == "msec":
+        if component == "":
             continue
         try:
             if col == 0:
@@ -76,7 +79,7 @@ def read_line(line):
                 col += 1
             elif col == 2:
                 if component in valid_cols:
-                    return [time, counts, component]
+                    return [time, counts, component, speed]
                 else:
                     return []
         except:
@@ -116,7 +119,7 @@ Relative precentages formatted as strings in a list.
 def get_relative(current, all):
     ret = []
     for i in all:
-        ret += ['{:.3%}'.format((current - i) / i)]
+        ret += ['{:.3%}'.format((i - current) / current)]
     return ret
 
 '''
@@ -126,7 +129,7 @@ Args:
 A line number in the perf file.
 
 Returns:
-A list contains the next line, runtime, PW latency, eval time, from to last lines, and columns of interest, accumulated.
+A list contains the next line, runtime, PW latency, speed, eval time, from to last lines, and columns of interest, accumulated.
 If the run is the last run, the line number will be 0.
 If the run is not the last run, the line number will be the begining of the next run.
 '''
@@ -136,14 +139,19 @@ def read_run(line_num):
     next_linenum = 0
     runtime = 0.0
     pw_latency = 0.0
+    speed = 0.0
+    speed_count = 0
     event_counts = [0] * len(valid_cols)
     for i in range(line_num, len(file) - 1):
         cols = read_line(file[i])
-        if len(cols) == 3:
+        if len(cols) == 4:
             if cols[0] >= end_time:
                 end_time = cols[0]
                 end_linenum = i
                 event_counts[valid_cols.index(cols[2])] += cols[1]
+                if cols[3]:
+                    speed += cols[3]
+                    speed_count += 1
             elif cols[0] < end_time:
                 next_linenum = i
                 break
@@ -152,32 +160,35 @@ def read_run(line_num):
                 print("Warning: runtime differs in one run")
             runtime = cols[0]
     pw_latency = get_pw_latency(event_counts)
-    return [next_linenum, runtime, pw_latency, runtime, line_num, end_linenum] + event_counts
+    return [next_linenum, runtime, pw_latency, speed / speed_count, end_time, line_num, end_linenum] + event_counts
 
 # Evaluate all runs, record and print summaries.
 line_num = 0
 run_count = 0
 runtime = []
 pw_latency = []
+speed = []
 stats = []
 while True:
     this_stats = read_run(line_num)
-    line_num, this_runtime, this_latency = this_stats[0 : 3]
+    line_num, this_runtime, this_latency, this_speed = this_stats[0 : 4]
     runtime += [this_runtime]
     pw_latency += [this_latency]
-    stats += [this_stats[3 :]]
+    speed += [this_speed]
+    stats += [this_stats[4 :]]
     run_count += 1
     if not line_num:
         break
 
 for i in range(0, run_count):
     print("")
-    print("Run", i + 1)
+    print("Run #", i + 1, ", 0 -> ", stats[i][0], ", ", stats[i][1] + 1, " -> ", stats[i][2] + 1, sep="")
     print("Runtime:", runtime[i])
     print("Relative runtime:", get_relative(runtime[i], runtime))
     print("Page walk latency:", pw_latency[i])
     print("Relative latency:", get_relative(pw_latency[i], pw_latency))
-    print("Evaulation duration: ", stats[i][0], ", ", stats[i][1] + 1, " -> ", stats[i][2] + 1, sep="")
+    print("Reference CPU speed:", speed[i], "GHz")
+    print("Relative CPU speed:", get_relative(speed[i], speed))
     for j in range(3, len(stats[i])):
         print(valid_cols[j - 3], stats[i][j], sep=": ")
 
@@ -187,24 +198,31 @@ run_start = 0
 run_end = 0
 avg_runtime = []
 avg_latency = []
+avg_speed = []
 if not len(partition) or partition_sum > run_count:
     print("")
     if len(partition):
         print("Warning: paritions are not applied because there are not enough runs")
     print("Average runtime:", statistics.mean(runtime))
     print("Average page walk latency:", statistics.mean(pw_latency))
-    sys.exit(0)
+    print("Average CPU speed:", statistics.mean(speed))
 else:
     for i in range(0, len(partition)):
         run_end = run_start + partition[i]
         avg_runtime += [statistics.mean(runtime[run_start : run_end])]
         avg_latency += [statistics.mean(pw_latency[run_start : run_end])]
+        avg_speed += [statistics.mean(speed[run_start : run_end])]
         run_start = run_end
 
 for i in range(0, len(partition)):
     print("")
-    print("Partition ", i + 1, ", ", partition[i], " runs", sep="")
+    print("Partition #", i + 1, ", ", partition[i], " runs", sep="")
     print("Average runtime:", avg_runtime[i])
     print("Relative average runtime:", get_relative(avg_runtime[i], avg_runtime))
     print("Average page walk latency:", avg_latency[i])
     print("Relative page walk latency:", get_relative(avg_latency[i], avg_latency))
+    print("Average CPU speed:", avg_speed[i], "GHz")
+    print("Relative CPU speed:", get_relative(avg_speed[i], avg_speed))
+
+print("")
+print("Note: all relative data are \"others compared to current\"")
