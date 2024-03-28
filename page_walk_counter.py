@@ -11,7 +11,7 @@ Exclusions, separated by comma, unit: run# (starting from #1, this affacts parti
 
 Example:
 chmod +x page_walk_counter.py
-./page_walk_counter.py perf-always.log 3,3 1 (Partitons: run 2,3,4; run 5,6,7; 1 excluded)
+./page_walk_counter.py perf-always.log -p 3,3 -e 1 (Partitons: run 2,3,4; run 5,6,7; 1 excluded)
 '''
 
 import sys
@@ -209,8 +209,10 @@ stats = []
 while True:
     this_stats = read_run(line_num)
     line_num, this_runtime, this_latency, this_speed = this_stats[0 : 4]
+    if not this_runtime:
+        print("Note: detected and omitted incomplete run after run #", eval_count, sep="")
     eval_count += 1
-    if eval_count not in exclusion:
+    if eval_count not in exclusion and this_runtime:
         runtime += [this_runtime]
         pw_latency += [this_latency]
         speed += [this_speed]
@@ -244,7 +246,7 @@ if not len(partition) or partition_sum > len(run_num):
         print("Warning: paritions are not applied because there are not enough runs to evaulate")
     print("Average runtime:", '{:.3f}'.format(statistics.mean(runtime)))
     print("Average page walk latency:", '{:.3f}'.format(statistics.mean(pw_latency)))
-    print("Average CPU speed:", '{:.3f}'.format(statistics.mean(speed)))
+    print("Average CPU speed:", '{:.3f}'.format(statistics.mean(speed)), "GHz")
     print("")
     print("Note: all relative data are \"others compared to current\"")
     exit(0)
