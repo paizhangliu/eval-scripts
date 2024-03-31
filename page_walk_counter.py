@@ -167,13 +167,13 @@ def read_line(line):
     return []
 
 '''
-Calculate the page walk latency.
+Calculate the page walk latency and TLB misses.
 
 Args:
 Counts of columns of interest from one run.
 
 Returns:
-Page walk latency.
+Page walk latency and TLB misses.
 '''
 def get_pw_latency(event_counts):
     pending = event_counts[valid_cols.index("dtlb_load_misses.walk_pending")] +\
@@ -185,7 +185,7 @@ def get_pw_latency(event_counts):
     if not completed:
         print("Warning: divide by zero when calculating PW latency")
         return 0.0
-    return pending / completed
+    return pending / completed, completed
 
 '''
 Get relative precentage with all available data.
@@ -219,6 +219,7 @@ def read_run(line_num):
     next_linenum = 0
     runtime = 0.0
     pw_latency = 0.0
+    tlb_miss = 0
     speed = 0.0
     speed_count = 0
     avg_speed = 0.0
@@ -241,12 +242,12 @@ def read_run(line_num):
                 print("Warning: runtime differs in one run")
             runtime = cols[0]
         end_linenum = i
-    pw_latency = get_pw_latency(event_counts)
+    pw_latency, tlb_miss = get_pw_latency(event_counts)
     if not speed_count:
         print("Warning: divide by zero when calculating the average CPU speed")
     else:
         avg_speed = speed / speed_count
-    return [next_linenum, runtime, pw_latency, avg_speed, end_time, line_num, end_linenum] + event_counts
+    return [next_linenum, runtime, pw_latency, tlb_miss, avg_speed, end_time, line_num, end_linenum] + event_counts
 
 '''
 Print the ending notes.
@@ -278,6 +279,7 @@ eval_count = 0
 run_num = []
 runtime = []
 pw_latency = []
+tlb_miss = []
 speed = []
 stats = []
 del_lines = []
@@ -285,21 +287,22 @@ omitted = []
 deleted = []
 while True:
     this_stats = read_run(line_num)
-    line_num, this_runtime, this_latency, this_speed = this_stats[0 : 4]
+    line_num, this_runtime, this_latency, this_miss, this_speed = this_stats[0 : 5]
     eval_count += 1
     if not this_runtime:
         omitted += [eval_count]
         if clear:
-            del_lines += list(range(this_stats[5], this_stats[6] + 1))
+            del_lines += list(range(this_stats[6], this_stats[7] + 1))
     if eval_count in deletion:
         deleted += [eval_count]
-        del_lines += list(range(this_stats[5], this_stats[6] + 1))
+        del_lines += list(range(this_stats[6], this_stats[7] + 1))
     if eval_count not in deletion and this_runtime:
         if (eval_count in inclusion) or (not inclusion and eval_count not in exclusion):
             runtime += [this_runtime]
             pw_latency += [this_latency]
+            tlb_miss += [this_miss]
             speed += [this_speed]
-            stats += [this_stats[4 :]]
+            stats += [this_stats[5 :]]
             run_num += [eval_count]
     if not line_num:
         break
@@ -327,6 +330,8 @@ for i in range(0, len(run_num)):
     print("Relative runtime:", get_relative(runtime[i], runtime))
     print("Page walk latency:", '{:.3f}'.format(pw_latency[i]))
     print("Relative latency:", get_relative(pw_latency[i], pw_latency))
+    print("Total TLB misses:", '{:.3f}'.format(tlb_miss[i]))
+    print("Relative TLB misses:", get_relative(tlb_miss[i], tlb_miss))
     print("Reference CPU speed:", '{:.3f}'.format(speed[i]), "GHz")
     print("Relative CPU speed:", get_relative(speed[i], speed))
     if verbose:
@@ -339,12 +344,14 @@ run_start = 0
 run_end = 0
 avg_runtime = []
 avg_latency = []
+avg_miss = []
 avg_speed = []
 if not len(partition) or partition_sum > len(run_num):
     print("")
     print("Overall summary:")
     print("Average runtime:", '{:.3f}'.format(statistics.mean(runtime)))
     print("Average page walk latency:", '{:.3f}'.format(statistics.mean(pw_latency)))
+    print("Average TLB misses", '{:.3f}'.format(statistics.mean(tlb_miss)))
     print("Average CPU speed:", '{:.3f}'.format(statistics.mean(speed)), "GHz")
     if len(partition):
         print("Warning: paritions are not applied because there are not enough runs to evaulate")
@@ -354,6 +361,7 @@ else:
         run_end = run_start + partition[i]
         avg_runtime += [statistics.mean(runtime[run_start : run_end])]
         avg_latency += [statistics.mean(pw_latency[run_start : run_end])]
+        avg_miss += [statistics.mean(tlb_miss[run_start : run_end])]
         avg_speed += [statistics.mean(speed[run_start : run_end])]
         run_start = run_end
 
@@ -367,6 +375,8 @@ for i in range(0, len(partition)):
     print("Relative average runtime:", get_relative(avg_runtime[i], avg_runtime))
     print("Average page walk latency:", '{:.3f}'.format(avg_latency[i]))
     print("Relative page walk latency:", get_relative(avg_latency[i], avg_latency))
+    print("Average TLB misses", '{:.3f}'.format(avg_miss[i]))
+    print("Relative page walk latency:", get_relative(avg_miss[i], avg_miss))
     print("Average CPU speed:", '{:.3f}'.format(avg_speed[i]), "GHz")
     print("Relative CPU speed:", get_relative(avg_speed[i], avg_speed))
     run_start = run_end
