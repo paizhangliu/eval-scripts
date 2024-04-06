@@ -332,8 +332,8 @@ for i in range(0, len(run_num)):
     print("Relative latency:", get_relative(pw_latency[i], pw_latency))
     print("Total TLB misses:", '{:.3f}'.format(tlb_miss[i]))
     print("Relative TLB misses:", get_relative(tlb_miss[i], tlb_miss))
-    print("Reference CPU speed:", '{:.3f}'.format(speed[i]), "GHz")
-    print("Relative CPU speed:", get_relative(speed[i], speed))
+    #print("Reference CPU speed:", '{:.3f}'.format(speed[i]), "GHz")
+    #print("Relative CPU speed:", get_relative(speed[i], speed))
     if verbose:
         for j in range(3, len(stats[i])):
             print(valid_cols[j - 3], stats[i][j], sep=": ")
@@ -352,7 +352,7 @@ if not len(partition) or partition_sum > len(run_num):
     print("Average runtime:", '{:.3f}'.format(statistics.mean(runtime)))
     print("Average page walk latency:", '{:.3f}'.format(statistics.mean(pw_latency)))
     print("Average TLB misses", '{:.3f}'.format(statistics.mean(tlb_miss)))
-    print("Average CPU speed:", '{:.3f}'.format(statistics.mean(speed)), "GHz")
+    #print("Average CPU speed:", '{:.3f}'.format(statistics.mean(speed)), "GHz")
     if len(partition):
         print("Warning: paritions are not applied because there are not enough runs to evaulate")
     print_ending(deleted, omitted, savefile, clear)
@@ -376,8 +376,8 @@ for i in range(0, len(partition)):
     print("Average page walk latency:", '{:.3f}'.format(avg_latency[i]))
     print("Relative page walk latency:", get_relative(avg_latency[i], avg_latency))
     print("Average TLB misses", '{:.3f}'.format(avg_miss[i]))
-    print("Relative page walk latency:", get_relative(avg_miss[i], avg_miss))
-    print("Average CPU speed:", '{:.3f}'.format(avg_speed[i]), "GHz")
-    print("Relative CPU speed:", get_relative(avg_speed[i], avg_speed))
+    print("Relative TLB misses:", get_relative(avg_miss[i], avg_miss))
+    #print("Average CPU speed:", '{:.3f}'.format(avg_speed[i]), "GHz")
+    #print("Relative CPU speed:", get_relative(avg_speed[i], avg_speed))
     run_start = run_end
 print_ending(deleted, omitted, savefile, clear)
