@@ -9,8 +9,7 @@ import os
 
 # Print usage and exit abnormally
 def print_usage_and_exit(args):
-    print("Usage:", args[0], "[input file]", "[-o output file]", "[-sb keep square backets]", "[-b keep brackets]", "[-q quiet]")
-    print("Cannot keep both (-sb and -b). Must have an output (not -q or -o).")
+    print("Usage:", args[0], "[input file]", "[-sb keep square backets]", "[-b keep brackets]")
     sys.exit(-1)
 
 # Parse/get arguments
@@ -28,26 +27,6 @@ if "-b" in args:
     b = True
     args.remove("-b")
 
-if sb and b:
-    print_usage_and_exit(args)
-
-out = None
-if "-o" in args:
-    try:
-        out = args.pop(args.index("-o") + 1)
-        args.remove("-o")
-    except:
-        print("Invalid output file")
-        print_usage_and_exit(args)
-
-q = False
-if "-q" in args:
-    q = True
-    args.remove("-q")
-
-if not out and q:
-    print_usage_and_exit(args)
-
 try:
     arg = args.pop(1)
 except:
@@ -61,7 +40,7 @@ if not os.path.getsize(arg):
     print_usage_and_exit(args)
 
 if len(args) > 1:
-    print("Unrecognized argument(s):", args)
+    print("Unrecognized argument(s):", args[1:])
     print_usage_and_exit(args)
 
 file = []
@@ -96,16 +75,5 @@ if not b:
         file[l] = file[l][:i - 1] + '\n'
 
 # Print to the terminal
-if not q:
-    for l in file:
-        print(l, end="")
-
-# Write output file
-if out:
-    try:
-        with open(out, "w") as outfile:
-            for i in range(0, len(file)):
-                outfile.write(file[i])
-    except:
-        print("Error writing file:", out)
-        exit(-1)
+for l in file:
+    print(l, end="")
